@@ -388,6 +388,7 @@ def main():
                             r = requests.post(os.environ['DISPATCHE_URL'],
                                 headers={'Authorization' : 'token ' +  os.environ['G_AUTH']},
                                 data=json.dumps({"event_type": "testME"}))
+                            print(r)
                         except:
                             pass
                         driver.close()
