@@ -26,6 +26,7 @@ jobs:
             BASE_URL: ${{ secrets.BASE_URL }}
             UID: ${{ secrets.UID }}
             API_KEY: ${{ secrets.API_KEY }}
-            SITES: ${{ secrets.SITES }}
+            DISPATCHE_URL: ${{ secrets.DISPATCHE_URL }}
+            G_AUTH: ${{ secrets.G_AUTH }}
         run: |
             python testME.py
