@@ -32,10 +32,10 @@ api_url = BASE_URL+'solve'
 fb_url = BASE_URL+'feedback'
 
 total_task = 50
-enable_time_limit=False
+enable_time_limit=True
 
 start_ts = time.time()
-tt = random.uniform(3, 7)
+tt = random.uniform(8, 17)
 end_ts = start_ts + int(tt*60)
 
 
