@@ -23,6 +23,8 @@ from urllib.parse import urlparse
 import undetected_chromedriver as uc
 
 
+
+
 uid=os.environ['UID']
 apikey=os.environ['API_KEY']
 BASE_URL=os.environ['BASE_URL']
@@ -51,16 +53,24 @@ sites = ['https://shimuldn.github.io/hcaptcha/', 'https://shimuldn.github.io/hca
 def main():
     try:
         options = webdriver.ChromeOptions()
+        # options.binary_location = "C:\\Users\\ROG\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe"
+        # options.binary_location = "C:\\Users\\ROG\\Documents\\Chromium-Portable-win64-codecs-sync-oracle\\bin\\chrome.exe"
+        # options.binary_location="/usr/games/chromium-bsu"
+        # options.add_argument("start-maximized")
         options.add_argument('--headless')
         # options.add_argument('--no-sandbox')
         options.add_argument('--lang=en_US')
         options.add_argument('--disable-dev-shm-usage')
         options.add_argument("--disable-gpu")
         options.add_argument("--disable-software-rasterizer")
+        # driver = uc.Chrome(options=options, use_subprocess=True, driver_executable_path='/home/ubuntu/python/chromedriver')
+        # print("Before driver")
         driver = uc.Chrome(options=options, use_subprocess=True)
         driver.set_window_size(300, 610)
+        # print(driver)
 
         def face_the_checkbox():
+            # print("face_the_checkbox")
             try:
                 WebDriverWait(driver, 8, ignored_exceptions=WebDriverException).until(
                     EC.presence_of_element_located(
@@ -238,7 +248,8 @@ def main():
                     url = f'{BASE_URL}upload?id={order_id}'
                     files = {'media': open(final_path, 'rb')}
                     requests.post(url, files=files)
-                except:pass
+                except Exception as _e:
+                    print(f"Error in uploading image {_e}")
 
 
                 WebDriverWait(driver, 35, ignored_exceptions=ElementClickInterceptedException).until(
