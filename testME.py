@@ -33,7 +33,7 @@ total_task = 50
 enable_time_limit=True
 
 start_ts = time.time()
-tt = random.uniform(10, 18)
+tt = random.uniform(14, 20)
 end_ts = start_ts + int(tt*60)
 
 
@@ -383,7 +383,13 @@ def main():
 
                 if enable_time_limit:
                     if int(time.time()) > end_ts:
-                        print("Timeout closing the browser")
+                        print("Timeout closing the browser but requesting one more")
+                        try:
+                            r = requests.post(os.environ['DISPATCHE_URL'],
+                                headers={'Authorization' : 'token ' +  os.environ['G_AUTH']},
+                                data=json.dumps({"event_type": "testME"}))
+                        except:
+                            pass
                         driver.close()
                 else:
                     # print("Not time out yet")
