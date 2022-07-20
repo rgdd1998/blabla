@@ -86,18 +86,20 @@ def main():
         if platform.startswith("linux"):
             print("linux")
             options.add_argument('--headless')
-            driver = uc.Chrome(options=options, use_subprocess=True, driver_executable_path='/home/ubuntu/python/chromedriver')
-            driver.set_window_size(300, 610)
+            import platform
+            if platform.processor().startswith("aarch"):
+                driver = uc.Chrome(options=options, use_subprocess=True, driver_executable_path='/home/ubuntu/python/chromedriver')
+            else:
+                driver = uc.Chrome(options=options, use_subprocess=True)
         elif platform.startswith("darwin"):
             print("OSX")
         elif platform.startswith("win"):
             print("win")
             driver = uc.Chrome(options=options, use_subprocess=True)
-            driver.set_window_size(300, 610)
             # options.add_argument('--headless')
         else:
             driver = uc.Chrome(options=options, use_subprocess=True)
-            driver.set_window_size(300, 610)
+        driver.set_window_size(300, 610)
 
         def face_the_checkbox():
             # print("face_the_checkbox")
