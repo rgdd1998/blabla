@@ -26,6 +26,7 @@ from urllib.parse import urlparse
 import undetected_chromedriver as uc
 
 
+
 uid=os.environ['UID']
 apikey=os.environ['API_KEY']
 BASE_URL=os.environ['BASE_URL']
@@ -36,8 +37,11 @@ total_task = 50
 enable_time_limit=True
 banch_mark=True
 
+if banch_mark:
+    print("Sending file upload enabled. will take 2s for every request.")
+
 start_ts = time.time()
-tt = random.uniform(14, 20)
+tt = random.uniform(13, 25)
 end_ts = start_ts + int(tt*60)
 order_id=""
 
@@ -127,6 +131,7 @@ def main():
 
         def handle_checkbox():
             for i in range(3):
+                check_time_limit(driver)
                 try:
                     time.sleep(1)
 
@@ -228,6 +233,7 @@ def main():
             except:pass
 
         def do_the_magic(site_key, target):
+            check_time_limit(driver)
             try:
                 # print("do_the_magic")
                 # site_key=get_site_key()
@@ -267,7 +273,7 @@ def main():
 
                             time_took+=(time.time() - order_t0)
 
-                            print(f"Response received from api in {round(sum(order_ta), 2)}seconds for target {tg} ID {order_id}")
+                            print(f"API solved {round(sum(order_ta), 2)}seconds for target {tg} ID {order_id} Time passed {calculate_total_time_passed()}m. Task done {total_request_to_api}")
                             order_ta = []
 
 
@@ -343,10 +349,14 @@ def main():
                     #### Uploading to imageDB ##################################################################
                     if banch_mark == True:
                         try:
-                            print("Sending upload... report by banchmark tool")
+                            tt0=time.time()
+                            tta=[]
+                            # print("Sending upload... report by banchmark tool")
                             url = f'{BASE_URL}upload?id={order_id}'
                             files = {'media': open(final_path, 'rb')}
                             requests.post(url, files=files)
+                            tta.append(time.time() - tt0)
+                            # print(f"Time took to send upload {round(sum(tta), 2)}seconds")
                         except Exception as _e:
                             print(f"Error in uploading image {_e}")
 
@@ -427,7 +437,7 @@ def main():
 
         for i in range(total_task):
             try:
-                print(f"Starting {i}")
+                # print(f"Starting {i}")
                 driver.get(random.choice(sites))
 
                 if not face_the_checkbox:
@@ -439,27 +449,14 @@ def main():
                     do_the_magic(site_key, target)
 
 
-                if enable_time_limit:
-                    if int(time.time()) > end_ts:
-                        print("Timeout closing the browser but requesting one more")
-                        try:
-                            r = requests.post(os.environ['DISPATCHE_URL'],
-                                headers={'Authorization' : 'token ' +  os.environ['G_AUTH']},
-                                data=json.dumps({"event_type": str(int(time.time()))}))
-                            print(r)
-                        except:
-                            pass
-                        driver.close()
-                else:
-                    # print("Not time out yet")
-                    pass
+                check_time_limit(driver)
             except:pass
 
 
         # Close the browser
 
         total_t.append(time.time() - s_time)
-        print(f"{total_task} done in {(round(sum(total_t), 2))/60}m. Closing browser.")
+        # print(f"{total_task} done in {(round(sum(total_t), 2))/60}m. Closing browser.")
         driver.close()
 
     except Exception as _e:
@@ -470,6 +467,29 @@ def main():
             print("Error closing browser.")
         # driver.close()
 
+def check_time_limit(driver):
+    if enable_time_limit:
+        if int(time.time()) > end_ts:
+            global total_request_to_api
+            total_task = 1
+            print("Timeout closing the browser but requesting one more")
+            do_another_api_call()
+            driver.close()
+            
+def do_another_api_call():
+    try:
+        r = requests.post(os.environ['DISPATCHE_URL'],
+            headers={'Authorization' : 'token ' +  os.environ['G_AUTH']},
+            data=json.dumps({"event_type": str(int(time.time()))}))
+        print(r)
+    except:
+        pass
+
+def calculate_total_time_passed():
+    tt=[]
+    tt.append(time.time() - s_time)
+    # print(f"{total_task} done in {(round(sum(total_t), 2))/60}m
+    return (round(sum(tt)/60, 2))
 
 main()
 
