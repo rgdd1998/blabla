@@ -1,4 +1,7 @@
-# pip install undetected_chromedriver selenium
+# pip install undetected_chromedriver selenium pillow
+#pip3 install --upgrade requests
+# wget https://github.com/electron/electron/releases/download/v19.0.2/chromedriver-v19.0.2-lin                                                                                                                ux-arm64.zip
+
 
 
 import random
@@ -31,14 +34,26 @@ fb_url = BASE_URL+'feedback'
 
 total_task = 50
 enable_time_limit=True
+banch_mark=True
 
 start_ts = time.time()
-tt = random.uniform(12, 29)
+tt = random.uniform(14, 20)
 end_ts = start_ts + int(tt*60)
-
+order_id=""
 
 total_t = []
 s_time = time.time()
+
+total_request_to_api=0
+total_response_received=0
+total_solved=0
+total_error=0
+total_skip=0
+time_took=0.0
+total_failed=0
+failed_list=[]
+skip_list=[]
+error_list=[]
 
 
 sites = ['https://shimuldn.github.io/hcaptcha/', 'https://shimuldn.github.io/hcaptcha/2',
@@ -55,7 +70,7 @@ def main():
         # options.binary_location = "C:\\Users\\ROG\\Documents\\Chromium-Portable-win64-codecs-sync-oracle\\bin\\chrome.exe"
         # options.binary_location="/usr/games/chromium-bsu"
         # options.add_argument("start-maximized")
-        options.add_argument('--headless')
+        # options.add_argument('--headless')
         # options.add_argument('--no-sandbox')
         options.add_argument('--lang=en_US')
         options.add_argument('--disable-dev-shm-usage')
@@ -63,9 +78,26 @@ def main():
         options.add_argument("--disable-software-rasterizer")
         # driver = uc.Chrome(options=options, use_subprocess=True, driver_executable_path='/home/ubuntu/python/chromedriver')
         # print("Before driver")
-        driver = uc.Chrome(options=options, use_subprocess=True)
-        driver.set_window_size(300, 610)
+        
+        
         # print(driver)
+
+        from sys import platform
+        if platform.startswith("linux"):
+            print("linux")
+            options.add_argument('--headless')
+            driver = uc.Chrome(options=options, use_subprocess=True, driver_executable_path='/home/ubuntu/python/chromedriver')
+            driver.set_window_size(300, 610)
+        elif platform.startswith("darwin"):
+            print("OSX")
+        elif platform.startswith("win"):
+            print("win")
+            driver = uc.Chrome(options=options, use_subprocess=True)
+            driver.set_window_size(300, 610)
+            # options.add_argument('--headless')
+        else:
+            driver = uc.Chrome(options=options, use_subprocess=True)
+            driver.set_window_size(300, 610)
 
         def face_the_checkbox():
             # print("face_the_checkbox")
@@ -199,7 +231,7 @@ def main():
                 # site_key=get_site_key()
 
                 images = get_data_for_api()
-                # print(images)
+                target = get_target()
                 site = urlparse(driver.current_url).netloc
 
                 required_data = {}
@@ -211,6 +243,9 @@ def main():
                 order_ta = []
                 order_t0 = time.time()
 
+                global total_request_to_api, total_error, time_took, total_skip, order_id
+                total_request_to_api=total_request_to_api+1
+
                 r = requests.post(url=api_url, headers={'Content-Type': 'application/json',
                                                         'uid': uid, 'apikey': apikey}, data=json.dumps(required_data))
                 # print(r.status_code, r.json()["id"])
@@ -221,10 +256,14 @@ def main():
                     time.sleep(2)
                     for i in range(15):
                         st_res = requests.get(r.json()["url"])
-                        print(st_res.json()['status'])
+
+
+                        # print(st_res.json()['status'])
                         if st_res.json()['status'] == "solved":
                             tg = re.split(r"containing a", target)[-1][1:].strip()
                             order_ta.append(time.time() - order_t0)
+
+                            time_took+=(time.time() - order_t0)
 
                             print(f"Response received from api in {round(sum(order_ta), 2)}seconds for target {tg} ID {order_id}")
                             order_ta = []
@@ -242,16 +281,8 @@ def main():
                         elif st_res.json()['status'] == "in queue":
                             time.sleep(1)
                         elif st_res.json()['status'] == "error":
+                            total_error+=1
 
-                            print(f"API not able to solve this one. Clicking refresh target {target}")
-                            WebDriverWait(driver, 35, ignored_exceptions=ElementClickInterceptedException).until(
-                                EC.element_to_be_clickable(
-                                    (By.XPATH, "//div[@class='refresh button']"))
-                            ).click()
-
-                            time.sleep(2)
-                            do_the_magic(site_key, target)
-                        elif st_res.json()['status'] == "skip":
                             print(f"API not able to solve this one. Clicking refresh target {target}")
                             WebDriverWait(driver, 35, ignored_exceptions=ElementClickInterceptedException).until(
                                 EC.element_to_be_clickable(
@@ -263,6 +294,23 @@ def main():
                         else:
                             print(f"{st_res.json()['status']} unknown error")
                             break
+
+                elif r.json()["status"] == "skip":
+                    order_id=""
+                    print("API not able to solve this issue. Requested skip")
+                    total_skip+=1
+                    print(f"API not able to solve this one. Clicking refresh target {target}")
+                    WebDriverWait(driver, 35, ignored_exceptions=ElementClickInterceptedException).until(
+                        EC.element_to_be_clickable(
+                            (By.XPATH, "//div[@class='refresh button']"))
+                    ).click()
+
+                    time.sleep(2)
+                    print("After refresh",get_target())
+                    do_the_magic(site_key, target)
+                else:
+                    order_id=""
+                    print("Unknown error with the request")
 
                 def get_button_name(driver):
                     try:
@@ -291,13 +339,14 @@ def main():
                     img.save(final_path, optimize=True)
 
                     #### Uploading to imageDB ##################################################################
-                    try:
-                        # print("Sending upload...")
-                        url = f'{BASE_URL}upload?id={order_id}'
-                        files = {'media': open(final_path, 'rb')}
-                        requests.post(url, files=files)
-                    except Exception as _e:
-                        print(f"Error in uploading image {_e}")
+                    if banch_mark == True:
+                        try:
+                            print("Sending upload... report by banchmark tool")
+                            url = f'{BASE_URL}upload?id={order_id}'
+                            files = {'media': open(final_path, 'rb')}
+                            requests.post(url, files=files)
+                        except Exception as _e:
+                            print(f"Error in uploading image {_e}")
 
 
                     WebDriverWait(driver, 35, ignored_exceptions=ElementClickInterceptedException).until(
@@ -306,42 +355,49 @@ def main():
                     ).click()
 
                 def check_if_solved(driver):
-                    # print("check_if_solved")
-                    try:
-                        error_txt = WebDriverWait(driver, 1, 0.1).until(
-                            EC.visibility_of_element_located(
-                                (By.XPATH, "//div[@class='error-text']"))
-                        )
-                        tg = re.split(r"containing a", target)[-1][1:].strip()
-                        print(
-                            f'error found {error_txt.text} order ID {r.json()["id"]} target {tg} . Sending feedback to api')
+                    global total_failed, order_id
+                    if order_id != "":
+                        # print("check_if_solved")
+                        try:
+                            error_txt = WebDriverWait(driver, 1, 0.1).until(
+                                EC.visibility_of_element_located(
+                                    (By.XPATH, "//div[@class='error-text']"))
+                            )
+                            tg = re.split(r"containing a", target)[-1][1:].strip()
+                            print(
+                                f'error found {error_txt.text} order ID {r.json()["id"]} target {tg} . Sending feedback to api')
 
-                        if error_txt.text == "Please try again.":
-                            # Sending feedback to api
-                            try:
-                                fb = {"id": r.json()['id'], "feedback": "False"}
-                                requests.post(url=fb_url, headers={'Content-Type': 'application/json',
-                                                                'uid': uid, 'apikey': apikey}, data=json.dumps(fb))
-                            except:
-                                pass
-                        
+                            if error_txt.text == "Please try again.":
+                                # Sending feedback to api
+                                if banch_mark==True:
+                                    total_failed+=1
+                                    print(f"From banchmark tool sending feedback of failed target {tg} order id {order_id}")
+                                else:
+                                    print(f"Sending feedback of failed target {tg} order id {order_id}")
+                                try:
+                                    fb = {"id": r.json()['id'], "feedback": "False"}
+                                    requests.post(url=fb_url, headers={'Content-Type': 'application/json',
+                                                                    'uid': uid, 'apikey': apikey}, data=json.dumps(fb))
+                                except:
+                                    pass
+                            
 
-                        ##### If there is error in solving. Solve the new one. ##################
-                        time.sleep(1)
-                        do_the_magic(site_key, target)
-                    except:
-                        pass
+                            ##### If there is error in solving. Solve the new one. ##################
+                            time.sleep(1)
+                            do_the_magic(site_key, target)
+                        except:
+                            pass
 
-                    try:
-                        tg = WebDriverWait(driver, 5, ignored_exceptions=ElementNotVisibleException).until(
-                            EC.presence_of_element_located(
-                                (By.XPATH, "//h2[@class='prompt-text']"))
-                        )
-                        # print(tg.text)
-                        do_the_magic(site_key, target)
-                    except:
-                        tg = re.split(r"containing a", target)[-1][1:].strip()
-                        order_id=str(r.json()["id"])
+                        try:
+                            tg = WebDriverWait(driver, 5, ignored_exceptions=ElementNotVisibleException).until(
+                                EC.presence_of_element_located(
+                                    (By.XPATH, "//h2[@class='prompt-text']"))
+                            )
+                            # print(tg.text)
+                            do_the_magic(site_key, target)
+                        except:
+                            tg = re.split(r"containing a", target)[-1][1:].strip()
+                            # order_id=str(r.json()["id"])
 
 
 
@@ -362,8 +418,8 @@ def main():
                     # print("btn name not verify")
                     time.sleep(0.3)
                     check_if_solved(driver)
-            except:
-                pass
+            except Exception as _e:
+                print(f"Exception on do the magic {_e}")
 
 
 
@@ -387,7 +443,7 @@ def main():
                         try:
                             r = requests.post(os.environ['DISPATCHE_URL'],
                                 headers={'Authorization' : 'token ' +  os.environ['G_AUTH']},
-                                data=json.dumps({"event_type": "testME"}))
+                                data=json.dumps({"event_type": str(int(time.time()))}))
                             print(r)
                         except:
                             pass
